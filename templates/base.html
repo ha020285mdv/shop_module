@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- {% load static %} -->
+
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <!-- <link rel="stylesheet" href="{% static 'css/styles.css'%}" type="text/css"> -->
+</head>
+
+
+<body>
+
+    <div class="wrapper">
+        <header class="header">
+            <a href="{% url 'goods' %}">STORE</a>
+            {% if user.is_authenticated %}
+                logined as <b>{{user.email}}</b>
+                <a href="{% url 'logout' %}">logout</a>
+                <a href="{% url 'account' %}">ACCOUNT</a>
+            {% else %}
+                <a href="{% url 'login' %}">login</a> / <a href="{% url 'register' %}">register</a>
+            {% endif %}
+
+            {% if user.is_superuser %}
+                admin tasks:
+                <a href="{% url 'admingoods' %}">manage goods</a> |
+                <a href="{% url 'adminrefund' %}">manage refunds</a> |
+                <a href="{% url 'admingood_add' %}">+ new goods</a>
+            {% endif %}
+
+
+        </header>
+        <hr>
+
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                <li
+                        {% if message.tags %} class="{{ message.tags }}" {% endif %}>
+                    {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}Important: {% endif %}
+                    {{ message }}
+                </li>
+                {% endfor %}
+            </ul>
+        <hr>
+        {% endif %}
+
+        <main class="main">
+            <div>
+                {% block content %}
+                {% endblock %}
+            </div>
+        </main>
+
+
+    </div>
+
+
+</body>
+</html>

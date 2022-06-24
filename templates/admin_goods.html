@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div>{{message}}</div>
+
+<h1>Goods</h1>
+
+<div>
+    <table border = "1">
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Price</th>
+            <th>In stock</th>
+            <th>Img</th>
+            <th> </th>
+        </tr>
+    {% for good in page_obj %}
+        <tr>
+            <th>{{good.id}}</th>
+            <th>{{good.title}}</th>
+            <th>{{good.description}}</th>
+            <th>{{good.price}}</th>
+            <th>{{good.in_stock}}</th>
+            <th>{{good.image}}</th>
+            <th>
+                <form action="{% url 'admingood_edit' good.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="pk" value="{{good.pk}}">
+                    <input type="submit" value="edit">
+                </form>
+            </th>
+        </tr>
+    {% endfor %}
+    </table>
+
+
+    {% include 'pagination.html' %}
+
+    <br>
+    <a href="{% url 'admingood_add' %}">+ ADD NEW GOODS</a>
+
+</div>
+
+{% endblock %}

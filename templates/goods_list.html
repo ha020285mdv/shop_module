@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Goods to buy</h1>
+
+<div>
+    {% for good in page_obj %}
+        <div>
+            <b>{{ good.title }}</b><br>
+            {% if good.image %}<img src="{{good.image.url}}">{% endif %}<br>
+            {{ good.description }}<br>
+            {{ good.price }} USD<br>
+            <form method="post" action="{% url 'goods' %}">
+                {% csrf_token %}
+                <input type="hidden" name="pk" value="{{good.pk}}">
+                <input type="number" value="1" name="quantity" min="1" max="{{good.in_stock}}">
+                <input type="hidden" name="price" value="{{good.price}}">
+                <input type="submit" value="BUY">
+            </form>
+            in stock: {{ good.in_stock }} pcs
+        </div>
+        <br>
+        <br>
+    {% endfor %}
+
+    {% include 'pagination.html' %}
+
+
+</div>
+
+{% endblock %}

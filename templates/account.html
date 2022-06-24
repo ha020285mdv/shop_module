@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+My balance: {{balance}} USD
+
+<hr>
+<h1>My purchases</h1>
+
+<div>
+    {% for purchase in page_obj %}
+    <div>
+           {{ purchase.datetime }}<br>
+           {{ purchase.good.title }}:<br>
+           {{ purchase.quantity }} x {{ purchase.price }} USD = {% widthratio purchase.quantity 1 purchase.price %} USD<br>
+
+           {% if purchase.pk in in_refund %}
+              <span class="red">refund pending admin approval</span>
+           {% else %}
+               {% if purchase in refund_possible %}
+                    <form method="post" action="{% url 'account' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="pk" value="{{purchase.pk}}">
+                        <input type="submit" value="refund">
+                    </form>
+               {% endif %}
+           {% endif %}
+    </div>
+    <br>
+    {% endfor %}
+
+
+    {% include 'pagination.html' %}
+
+
+</div>
+
+{% endblock %}
