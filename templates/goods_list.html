@@ -15,7 +15,6 @@
                 {% csrf_token %}
                 <input type="hidden" name="pk" value="{{good.pk}}">
                 <input type="number" value="1" name="quantity" min="1" max="{{good.in_stock}}">
-                <input type="hidden" name="price" value="{{good.price}}">
                 <input type="submit" value="BUY">
             </form>
             in stock: {{ good.in_stock }} pcs

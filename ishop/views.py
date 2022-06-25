@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import redirect
@@ -31,7 +31,7 @@ class GoodsListView(ListView):
         user = ShopUser.objects.get(id=request.user.id)
         good = Good.objects.get(id=self.request.POST['pk'])
         quantity = int(self.request.POST['quantity'])
-        price = int(self.request.POST['price'])
+        price = good.price
         in_stock = good.in_stock
         wallet = user.wallet
         amount = quantity * price
@@ -75,7 +75,7 @@ class Account(LoginRequiredMixin, ListView):
         context['refund_possible'] = self.model.objects.filter(customer=self.request.user, datetime__gt=delta)
         in_refund = Refund.objects.filter(purchase__in=self.get_queryset())
         context['in_refund'] = in_refund.values_list('purchase__pk', flat=True)
-        context['balance'] = ShopUser.objects.get(id=self.request.user.id).wallet
+        context['balance'] = self.request.user.wallet
         return context
 
     def post(self, request, *args, **kwargs):
@@ -160,8 +160,7 @@ class Login(LoginView):
 
 
 class Register(CreateView):
-    User = get_user_model()
-    model = User
+    model = ShopUser
     form_class = CustomUserCreationForm
     success_url = '/'
     template_name = 'register.html'
