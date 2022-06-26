@@ -5,7 +5,7 @@ from django.db.models import CASCADE
 
 class ShopUser(AbstractUser):
     email = models.EmailField(max_length=150, blank=False, unique=True)
-    wallet = models.PositiveIntegerField()
+    wallet = models.PositiveIntegerField(default=0)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

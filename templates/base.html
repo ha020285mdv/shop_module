@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- {% load static %} -->
+{% load static %}
 
 <html lang="en">
 
@@ -7,7 +7,8 @@
 <head>
     <meta charset="UTF-8">
     <title>{{title}}</title>
-    <!-- <link rel="stylesheet" href="{% static 'css/styles.css'%}" type="text/css"> -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}" type="text/css">
+    <script src="{% static 'js/index.js' %}" async></script>
 </head>
 
 
@@ -15,11 +16,16 @@
 
     <div class="wrapper">
         <header class="header">
-            <a href="{% url 'goods' %}">STORE</a>
+            {% if not user.is_superuser %}
+                <a href="{% url 'goods' %}">STORE</a>
+            {% endif %}
+
             {% if user.is_authenticated %}
-                logined as <b>{{user.email}}</b>
+                logined as <b>{{user.email}}</b> |
                 <a href="{% url 'logout' %}">logout</a>
-                <a href="{% url 'account' %}">ACCOUNT</a>
+                {% if not user.is_superuser %}|
+                    <a href="{% url 'account' %}">ACCOUNT</a>
+                {% endif %}
             {% else %}
                 <a href="{% url 'login' %}">login</a> / <a href="{% url 'register' %}">register</a>
             {% endif %}
@@ -27,8 +33,8 @@
             {% if user.is_superuser %}
                 admin tasks:
                 <a href="{% url 'admingoods' %}">manage goods</a> |
-                <a href="{% url 'adminrefund' %}">manage refunds</a> |
-                <a href="{% url 'admingood_add' %}">+ new goods</a>
+                <a href="{% url 'admingood_add' %}">+ new goods</a> |
+                <a href="{% url 'adminrefund' %}">manage refunds</a>
             {% endif %}
 
 

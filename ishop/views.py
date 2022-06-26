@@ -3,8 +3,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import redirect
 from django.utils import timezone
+from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView
 from django.contrib import messages
+from django.db import transaction
 
 from ishop.forms import CustomUserCreationForm
 from ishop.models import Good, ShopUser, Purchase, Refund
@@ -22,13 +24,17 @@ class GoodsListView(ListView):
     queryset = Good.objects.filter(in_stock__gt=0)
     extra_context = {'title': 'Online shop'}
 
+
+class PurchaseView(View):
+    http_method_names = ['post', ]
+
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             msg = "Only logged users can buy"
             messages.warning(self.request, msg)
             return redirect('login')
 
-        user = ShopUser.objects.get(id=request.user.id)
+        user = self.request.user
         good = Good.objects.get(id=self.request.POST['pk'])
         quantity = int(self.request.POST['quantity'])
         price = good.price
@@ -47,15 +53,42 @@ class GoodsListView(ListView):
             return redirect('goods')
 
         user.wallet -= amount
-        user.save()
         good.in_stock -= quantity
-        good.save()
-        Purchase.objects.create(customer=user, good=good, quantity=quantity, price=price)
+        purchase = Purchase(customer=user, good=good, quantity=quantity, price=price)
+
+        with transaction.atomic():
+            user.save()
+            good.save()
+            purchase.save()
 
         msg = "Your purchase is done"
         messages.success(self.request, msg)
 
-        return self.get(request, *args, **kwargs)
+        return redirect('goods')
+
+
+class PurchaseRefundView(View):
+    http_method_names = ['post', ]
+    interval_to_refund = 3  # in minutes
+
+    @staticmethod
+    def get_time_to_refund():
+        interval = PurchaseRefundView.interval_to_refund
+        return timezone.now() - timezone.timedelta(minutes=interval)
+
+    def post(self, request, *args, **kwargs):
+        purchase = Purchase.objects.get(pk=self.request.POST['pk'])
+
+        if purchase.datetime < self.get_time_to_refund():
+            msg = 'Your refund time has been expired'
+            messages.error(self.request, msg)
+            return redirect('account')
+
+        Refund.objects.get_or_create(purchase=purchase)
+        msg = 'Your refund request has been sent. Wait for approving.'
+        messages.success(self.request, msg)
+
+        return redirect('account')
 
 
 class Account(LoginRequiredMixin, ListView):
@@ -63,7 +96,6 @@ class Account(LoginRequiredMixin, ListView):
     paginate_by = 10
     template_name = 'account.html'
     extra_context = {'title': 'My account'}
-    time_interval_to_refund = 3  # in minutes
 
     def get_queryset(self):
         queryset = self.model.objects.filter(customer=self.request.user)
@@ -71,30 +103,12 @@ class Account(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        delta = timezone.now() - timezone.timedelta(minutes=self.time_interval_to_refund)
+        delta = PurchaseRefundView.get_time_to_refund()
         context['refund_possible'] = self.model.objects.filter(customer=self.request.user, datetime__gt=delta)
         in_refund = Refund.objects.filter(purchase__in=self.get_queryset())
         context['in_refund'] = in_refund.values_list('purchase__pk', flat=True)
         context['balance'] = self.request.user.wallet
         return context
-
-    def post(self, request, *args, **kwargs):
-        purchase = Purchase.objects.get(pk=self.request.POST['pk'])
-        delta = timezone.now() - timezone.timedelta(minutes=self.time_interval_to_refund)
-        if purchase.datetime < delta:
-            msg = 'Your refund time has been expired'
-            messages.error(self.request, msg)
-            return self.get(request, *args, **kwargs)
-
-        _, is_new = Refund.objects.get_or_create(purchase=purchase)
-        if is_new:
-            msg = 'Your refund request has been sent. Wait for approving.'
-            messages.success(self.request, msg)
-        else:
-            msg = 'The refund for current purchase already exists. Wait for approving.'
-            messages.error(self.request, msg)
-
-        return self.get(request, *args, **kwargs)
 
 
 class AdminRefundView(SuperUserRequiredMixin, ListView):
@@ -102,6 +116,11 @@ class AdminRefundView(SuperUserRequiredMixin, ListView):
     paginate_by = 10
     template_name = 'admin_refunds.html'
     extra_context = {'title': 'Admin: Purchases to refund'}
+
+
+class AdminRefundProcessView(SuperUserRequiredMixin, View):
+    http_method_names = ['post', ]
+    model = Refund
 
     def post(self, request, *args, **kwargs):
         pk = self.request.POST['pk']
@@ -117,15 +136,15 @@ class AdminRefundView(SuperUserRequiredMixin, ListView):
             price = refund.purchase.price
 
             user.wallet += price * quantity
-            user.save()
-
             good.in_stock += quantity
-            good.save()
 
-            self.model.objects.get(pk=pk).delete()
-            refund.purchase.delete()
+            with transaction.atomic():
+                user.save()
+                good.save()
+                refund.purchase.delete()
+                refund.delete()
 
-        return self.get(request, *args, **kwargs)
+        return redirect('adminrefund')
 
 
 class AdminGoodsView(SuperUserRequiredMixin, ListView):

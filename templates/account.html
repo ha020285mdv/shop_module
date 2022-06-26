@@ -18,7 +18,7 @@ My balance: {{balance}} USD
               <span class="red">refund pending admin approval</span>
            {% else %}
                {% if purchase in refund_possible %}
-                    <form method="post" action="{% url 'account' %}">
+                    <form method="post" action="{% url 'purchase_refund' %}">
                         {% csrf_token %}
                         <input type="hidden" name="pk" value="{{purchase.pk}}">
                         <input type="submit" value="refund">

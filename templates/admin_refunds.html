@@ -10,7 +10,7 @@
         {% for refund in page_obj %}
         <div>
             {{ refund.purchase }}
-            <form method="post" action="{% url 'adminrefund' %}">
+            <form method="post" action="{% url 'adminrefund_process' %}">
                 {% csrf_token %}
                 <input type="hidden" name="pk" value="{{refund.pk}}">
                 <input type="submit" value="approve" name="approval">
