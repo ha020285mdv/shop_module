@@ -135,3 +135,5 @@ AUTH_USER_MODEL = 'ishop.ShopUser'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+INTERVAL_TO_REFUND = 3  # in minutes

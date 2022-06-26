@@ -8,6 +8,7 @@ from django.views.generic import ListView, CreateView, UpdateView
 from django.contrib import messages
 from django.db import transaction
 
+from Shop import settings
 from ishop.forms import CustomUserCreationForm
 from ishop.models import Good, ShopUser, Purchase, Refund
 
@@ -69,11 +70,10 @@ class PurchaseView(View):
 
 class PurchaseRefundView(View):
     http_method_names = ['post', ]
-    interval_to_refund = 3  # in minutes
 
     @staticmethod
     def get_time_to_refund():
-        interval = PurchaseRefundView.interval_to_refund
+        interval = settings.INTERVAL_TO_REFUND
         return timezone.now() - timezone.timedelta(minutes=interval)
 
     def post(self, request, *args, **kwargs):
