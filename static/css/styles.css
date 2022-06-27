@@ -1,0 +1,28 @@
+
+.store {
+  width: 1000px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+
+.good {
+  width: 200px;
+  height: 350px;
+  margin: 10px;
+  border: 1px solid #F5F5DC;
+  overflow: hidden;
+}
+
+.img {
+  width: 200px;
+  height: 230px;
+  overflow: hidden;
+}
+
+.buy {
+  background-color: orange;
+  border: none;
+  width: 50px;
+}

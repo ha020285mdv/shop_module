@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <div>{{message}}</div>
+
+    <h1>Purchases refund requests:</h1>
+
+    <div>
+        {% for refund in page_obj %}
+        <div>
+            {{ refund.purchase }}
+            <form method="post" action="{% url 'adminrefund_process' %}">
+                {% csrf_token %}
+                <input type="hidden" name="pk" value="{{refund.pk}}">
+                <input type="submit" value="approve" name="approval">
+                <input type="submit" value="decline" name="approval">
+            </form>
+        </div>
+        <br>
+        {% endfor %}
+    </div>
+
+    {% include 'pagination.html' %}
+
+{% endblock %}
