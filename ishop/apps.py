@@ -6,5 +6,5 @@ class IshopConfig(AppConfig):
     name = 'ishop'
 
     def ready(self):
-        # add wor working with signals
+        # add for working with signals
         import ishop.signals
