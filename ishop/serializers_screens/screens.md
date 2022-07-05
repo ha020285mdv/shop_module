@@ -1,6 +1,6 @@
 1. Создать сериалайзер для обработки данных из 1 задания из лекции про формы (Напишите форму, в которой можно указать имя, пол, возраст и уровень владения английским (выпадающим списком), если введенные данные это парень старше 20-и ( включительно) и уровнем английского B2 выше, или девушка старше 22-ух и уровнем выше чем B1 то перейти на страницу где будет написано, что вы нам подходите, или что не подходит соответственно.)
 Зайти в shell. Заполнить сериалайзер через data= данными. Убедиться что валидация работает в соответствии с требованиями. Прислать мне скрины.
-! [Task 1] (https://raw.githubusercontent.com/ha020285mdv/shop_module/hw_for_34-35-36_lessons/ishop/serializers_screens/1.png)
+ ![Task 1](https://raw.githubusercontent.com/ha020285mdv/shop_module/hw_for_34-35-36_lessons/ishop/serializers_screens/1.png)
 
 ![](https://i1.wp.com/www.ybouglouan.pl/wp-content/uploads/2017/04/rest_api_sortof.jpg](https://github.com/ha020285mdv/shop_module/blob/hw_for_34-35-36_lessons/ishop/serializers_screens/1.png)
 
