@@ -61,8 +61,8 @@ class RefundViewSet(ModelViewSet):
             quantity = purchase.quantity
             price = purchase.price
 
-            customer.wallet = customer.wallet + quantity * price
-            good.in_stock = good.in_stock + quantity
+            customer.wallet += quantity * price
+            good.in_stock += quantity
 
             with transaction.atomic():
                 customer.save()
