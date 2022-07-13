@@ -5,7 +5,7 @@ from ishop.API.filters import IsOwnerOrAdminFilterBackendForRefund, IsOwnerOrAdm
 from ishop.API.filters import IsOwnerOrAdminFilterBackendForUser
 from ishop.API.serializers import GoodSerializer, ShopUserSerializer, PurchaseSerializer, RefundSerializer
 from ishop.models import Good, ShopUser, Purchase, Refund
-from ishop.permissions import IsAdminOrReadOnly, IsAdminOrCreateOnly, IsAdminOrCreateOnlyForUsers
+from ishop.API.permissions import IsAdminOrReadOnly, IsAdminOrCreateOnly, IsAdminOrCreateOnlyForUsers
 
 
 class GoodsViewSet(ModelViewSet):
