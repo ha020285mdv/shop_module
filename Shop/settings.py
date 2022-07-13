@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'ishop',
     'rest_framework',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -141,6 +142,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 INTERVAL_TO_REFUND = 3  # in minutes
 
+DRF_TOKEN_LIFE_TIME = 1 * 60 * 60 * 10000  # in seconds
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -150,4 +153,16 @@ CACHES = {
         },
         "KEY_PREFIX": "example"
     }
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'ishop.API.authetication.TokenWithLifeTimeAuthentication',
+    ]
+
 }
