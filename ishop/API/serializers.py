@@ -20,9 +20,12 @@ class PurchaseSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """
         Check if user has enough money to buy
+        Check if quantity is not greater than number of goods in stock
         """
         if data['customer'].wallet < data['quantity'] * data['good'].price:
             raise serializers.ValidationError("Customer don't have enough money to buy")
+        if data['quantity'] > data['good'].in_stock:
+            raise serializers.ValidationError("Not enough goods in stock")
         return data
 
 

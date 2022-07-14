@@ -1,5 +1,8 @@
 from django.db import transaction
-from rest_framework.viewsets import ModelViewSet
+from rest_framework import status, mixins
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from ishop.API.filters import IsOwnerOrAdminFilterBackendForRefund, IsOwnerOrAdminFilterBackendForPurchase
 from ishop.API.filters import IsOwnerOrAdminFilterBackendForUser
@@ -41,33 +44,45 @@ class PurchaseViewSet(ModelViewSet):
             good.save()
 
 
-class RefundViewSet(ModelViewSet):
+class RefundViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.UpdateModelMixin,
+                    mixins.ListModelMixin,
+                    GenericViewSet):
+
     queryset = Refund.objects.all()
     serializer_class = RefundSerializer
     filter_backends = [IsOwnerOrAdminFilterBackendForRefund]
     permission_classes = (IsAdminOrCreateOnly, )
 
-    def perform_destroy(self, instance):
+    @action(detail=True, methods=['delete'])
+    def decline(self, request, *args, **kwargs):
         """
-        If Delete request contains JSON data "approve = True" - do refund
-        if request does not contain data, or "approve = False" - delete refund object only
+        Deleting refund object only without any affect
         """
-        is_approved = self.request.data.get('approve')
+        self.get_object().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        if is_approved:
-            purchase = instance.purchase
-            customer = purchase.customer
-            good = purchase.good
-            quantity = purchase.quantity
-            price = purchase.price
+    @action(detail=True, methods=['delete'])
+    def approve(self, request, *args, **kwargs):
+        """
+        Do refund: refund money to wallet and good to stock,
+        delete refund and purchase objects
+        """
+        refund = self.get_object()
+        purchase = refund.purchase
+        customer = purchase.customer
+        good = purchase.good
+        quantity = purchase.quantity
+        price = purchase.price
 
-            customer.wallet += quantity * price
-            good.in_stock += quantity
+        customer.wallet += quantity * price
+        good.in_stock += quantity
 
-            with transaction.atomic():
-                customer.save()
-                good.save()
-                purchase.delete()
-                instance.delete()
-        else:
-            instance.delete()
+        with transaction.atomic():
+            customer.save()
+            good.save()
+            purchase.delete()
+            refund.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
