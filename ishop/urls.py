@@ -1,8 +1,18 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework import routers
 
+from ishop.API.resources import GoodsViewSet, ShopUserViewSet, PurchaseViewSet, RefundViewSet
 from ishop.views import Login, Register, Logout, Account
 from ishop.views import GoodsListView, PurchaseView, PurchaseRefundView
 from ishop.views import AdminRefundView, AdminGoodsView, AdminGoodEditView, AdminGoodAddView, AdminRefundProcessView
+from rest_framework.authtoken import views
+
+
+router = routers.SimpleRouter()
+router.register(r'goods', GoodsViewSet)
+router.register(r'users', ShopUserViewSet)
+router.register(r'purchases', PurchaseViewSet)
+router.register(r'refunds', RefundViewSet)
 
 
 urlpatterns = [
@@ -20,4 +30,7 @@ urlpatterns = [
     path('admin-goods/', AdminGoodsView.as_view(), name='admingoods'),
     path('admin-good-edit/<int:pk>', AdminGoodEditView.as_view(), name='admingood_edit'),
     path('admin-good-add/', AdminGoodAddView.as_view(), name='admingood_add'),
+
+    path('api/token-auth/', views.obtain_auth_token),
+    path('api/', include(router.urls)),
 ]
