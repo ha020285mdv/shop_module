@@ -1,108 +1,22 @@
 import datetime
 from unittest import mock
-from faker import Faker
+
+from django.contrib.auth.models import AnonymousUser
+from django.http import HttpResponseRedirect
 from django.test import RequestFactory, TestCase, Client
-import factory
-
 from ishop.models import ShopUser, Good, Purchase, Refund
-from ishop.views import GoodsListView, PurchaseView, PurchaseRefundView, Account
-
-
-class GoodsListViewTest(TestCase):
-    def setUp(self):
-        self.factory = RequestFactory()
-        self.user = ShopUser.objects.create(email='user@gmail.com', password='top_secret01')
-
-    def test_availability(self):
-        request = self.factory.get('/')
-        response = GoodsListView.as_view()(request)
-        self.assertEqual(response.status_code, 200)
-
-    def test_of_template(self):
-        request = self.factory.get('/')
-        response = GoodsListView.as_view()(request)
-        self.assertEqual(response.template_name[0], 'goods_list.html')
+from ishop.views import GoodsListView, PurchaseView, PurchaseRefundView, Account, Login, AdminRefundProcessView
 
 
 class PurchaseViewTest(TestCase):
     def setUp(self):
-        self.c = Client()
-        self.user = ShopUser.objects.create(email='user@gmail.com', password='top_secret01', wallet=1000)
-        self.c.force_login(self.user)
-        self.good = Good.objects.create(title="Beer", price=5, in_stock=10)
-        self.data = {'pk': self.good.pk, 'quantity': 3}
+        self.factory = RequestFactory()
 
-    def test_create_purchase(self):
-        self.c.post('/purchase/', self.data)
-        purchase = Purchase.objects.first()
+    def test_method_get(self):
+        request = self.factory.get('/purchase/')
+        response = PurchaseView.as_view()(request)
+        self.assertNotEqual(response.status_code, 200)
 
-        self.assertEqual(purchase.good, self.good)
-        self.assertEqual(purchase.customer, self.user)
-        self.assertEqual(purchase.quantity, self.data['quantity'])
-
-    def test_purchase_subtraction_money_from_wallet(self):
-        self.c.post('/purchase/', self.data)
-        self.assertEqual(ShopUser.objects.get(email='user@gmail.com').wallet, 985)
-
-    def test_purchase_subtraction_good_from_stock(self):
-        self.c.post('/purchase/', self.data)
-        Good.objects.get(title="Beer")
-        self.assertEqual(Good.objects.get(title="Beer").in_stock, 7)
-
-    def test_not_create_purchase_if_user_logout(self):
-        self.c.logout()
-        self.c.post('/purchase/', self.data)
-        purchases = Purchase.objects.all()
-        self.assertQuerysetEqual(purchases, [])
-
-    def test_not_create_purchase_if_no_money(self):
-        self.user.wallet = 10
-        self.user.save()
-        self.c.post('/purchase/', self.data)
-        purchases = Purchase.objects.all()
-        self.assertQuerysetEqual(purchases, [])
-
-    def test_not_create_purchase_if_no_in_stock(self):
-        self.good.in_stock = 2
-        self.good.save()
-        self.c.post('/purchase/', self.data)
-        purchases = Purchase.objects.all()
-        self.assertQuerysetEqual(purchases, [])
-
-
-class RefundViewTest(TestCase):
-    def setUp(self):
-        self.c = Client()
-        self.user = ShopUser.objects.create(email='user@gmail.com', password='top_secret01', wallet=1000)
-        self.c.force_login(self.user)
-        self.good = Good.objects.create(title="Whiskey", price=30, in_stock=6)
-        self.purchase = Purchase.objects.create(customer=self.user,
-                                                good=self.good,
-                                                quantity=4,
-                                                price=30)
-
-    def test_refund_create(self):
-        self.c.post('/refund/', {'pk': self.purchase.pk})
-        refund = Refund.objects.get(purchase=self.purchase)
-        self.assertEqual(refund.purchase, self.purchase)
-
-    def test_avoid_refund_double_create(self):
-        self.c.post('/refund/', {'pk': self.purchase.pk})
-        refund1 = Refund.objects.get(purchase=self.purchase)
-        self.c.post('/refund/', {'pk': self.purchase.pk})
-        refund2 = Refund.objects.get(purchase=self.purchase)
-        self.assertEqual(refund1, refund2)
-
-    def test_as_context_manager(self):
-        mocked_dt = datetime.datetime(2022, 6, 18, 00, 00, 0)
-        with mock.patch('django.utils.timezone.now', mock.Mock(return_value=mocked_dt)):
-            purchase = Purchase.objects.create(customer=self.user,
-                                               good=self.good,
-                                               quantity=4,
-                                               price=30)
-        self.c.post('/refund/', {'pk': purchase.pk})
-        refund = Refund.objects.filter(purchase=purchase)
-        self.assertQuerysetEqual(refund, [])
 
 class AccountViewTest(TestCase):
     def setUp(self):
@@ -180,3 +94,39 @@ class AccountViewTest(TestCase):
         response = Account.as_view()(request)
         context = response.context_data
         self.assertEqual(self.user1.wallet, context['balance'])
+
+
+class AdminRefundProcessViewTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_availability_for_no_logined(self):
+        request = self.factory.get('/admin-refund-process/')
+        request.user = AnonymousUser()
+        response = AdminRefundProcessView.as_view()(request)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(isinstance(response, HttpResponseRedirect))
+        self.assertEqual(response.get('location'), '/accounts/login/?next=/admin-refund-process/')
+
+
+class LoginViewTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = ShopUser.objects.create(email='user1@gmail.com',
+                                             username='user1@gmail.com',
+                                             password='top_secret01',
+                                             wallet=1000)
+
+    def test_availability(self):
+        request = self.factory.get('/login')
+        request.user = AnonymousUser()
+        response = Login.as_view()(request)
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_success_url(self):
+        request = self.factory.post('/login', data={'email': 'user1@gmail.com',
+                                                    'password': 'top_secret01'})
+        view = Login()
+        view.setup(request)
+        success_url = view.get_success_url()
+        self.assertEqual(success_url, '/')
