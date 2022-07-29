@@ -1,11 +1,10 @@
 import datetime
 from unittest import mock
-from faker import Faker
-from django.test import RequestFactory, TestCase, Client
-import factory
+from django.test import TestCase, Client
 
+from ishop.forms import CustomUserCreationForm
 from ishop.models import ShopUser, Good, Purchase, Refund
-from ishop.views import GoodsListView, PurchaseView, PurchaseRefundView, Account
+from ishop.tests.factories import ShopUserFactory, GoodFactory, PurchaseFactory, RefundFactory, SuperUserFactory
 
 
 class PurchaseViewTest(TestCase):
@@ -70,7 +69,7 @@ class RefundViewTest(TestCase):
         refund = Refund.objects.get(purchase=self.purchase)
         self.assertEqual(refund.purchase, self.purchase)
 
-    def test_avoid_refund_double_create(self):
+    def test_avoid_refund_avoid_double_create(self):
         self.c.post('/refund/', {'pk': self.purchase.pk})
         refund1 = Refund.objects.get(purchase=self.purchase)
         self.c.post('/refund/', {'pk': self.purchase.pk})
@@ -92,45 +91,71 @@ class RefundViewTest(TestCase):
 class AdminRefundProcessViewTest(TestCase):
     def setUp(self):
         self.c = Client()
-        self.user1 = ShopUser.objects.create(email='user1@gmail.com',
-                                            username='user1@gmail.com',
-                                            password='top_secret01',
-                                            wallet=1000)
-        self.user2 = ShopUser.objects.create(email='user2@gmail.com',
-                                            username='user2@gmail.com',
-                                            password='top_secret01',
-                                            wallet=1000)
-        self.superuser = ShopUser.objects.create(email='user3@gmail.com',
-                                             username='user3@gmail.com',
-                                             password='top_secret01',
-                                             is_superuser=True)
-
-        beer = Good.objects.create(title="Beer", price=10, in_stock=10)
-        wine = Good.objects.create(title="Wine", price=15, in_stock=20)
-        vodka = Good.objects.create(title="Vodka", price=19, in_stock=12)
-        rum = Good.objects.create(title="Rum", price=21, in_stock=14)
-        cidre = Good.objects.create(title="Cidre", price=5, in_stock=23)
-
-        purchase1 = Purchase.objects.create(customer=self.user1, good=beer, quantity=3, price=10)
-        purchase2 = Purchase.objects.create(customer=self.user1, good=wine, quantity=1, price=15)
-        purchase3 = Purchase.objects.create(customer=self.user2, good=rum, quantity=2, price=21)
-        purchase4 = Purchase.objects.create(customer=self.user2, good=cidre, quantity=3, price=5)
-        purchase5 = Purchase.objects.create(customer=self.user2, good=vodka, quantity=1, price=19)
-
-        Refund.objects.create(purchase=purchase1)
-        Refund.objects.create(purchase=purchase2)
-        Refund.objects.create(purchase=purchase3)
-        Refund.objects.create(purchase=purchase4)
-        Refund.objects.create(purchase=purchase5)
+        self.user1 = ShopUser.objects.create(email='user1@gmail.com', username='user1@gmail.com', password='top_secret01', wallet=1000)
+        self.user2 = ShopUser.objects.create(email='user2@gmail.com', username='user2@gmail.com', password='top_secret01', wallet=1000)
+        self.admin = ShopUser.objects.create(email='admin@gmail.com', password='top_secret01', is_superuser=True)
+        self.c.force_login(self.admin)
+        self.good = Good.objects.create(title="Beer", price=5, in_stock=10)
+        self.purchase1 = Purchase.objects.create(customer=self.user1, good=self.good, price=5, quantity=4)
+        self.purchase2 = Purchase.objects.create(customer=self.user2, good=self.good, price=5, quantity=1)
+        self.refund1 = Refund.objects.create(purchase=self.purchase1)
+        self.refund2 = Refund.objects.create(purchase=self.purchase2)
 
     def test_availability_for_no_superuser(self):
+        self.c.logout()
         self.c.force_login(self.user1)
         response = self.c.post('/admin-refund-process/', data={})
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.reason_phrase, 'Forbidden')
 
-    def test_decline(self):
-        self.c.force_login(self.superuser)
-        response = self.c.post('/admin-refund-process/', data={'pk': Refund.objects.get(purchase=self.purchase4).pk,
-                                                               'approval': 'decline'})
-        self.assertNotIn(Refund.objects.all(), b)
+    def test_admin_decline_refund(self):
+        response = self.c.post('/admin-refund-process/', data={'pk': self.refund1.pk, 'approval': 'decline'})
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn(self.refund1, Refund.objects.all())
+
+    def test_admin_approve_refund_delete_refund_object(self):
+        response = self.c.post('/admin-refund-process/', data={'pk': self.refund1.pk, 'approval': 'approve'})
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn(self.refund1, Refund.objects.all())
+
+    def test_admin_approve_refund_delete_purchase_object(self):
+        response = self.c.post('/admin-refund-process/', data={'pk': self.refund1.pk, 'approval': 'approve'})
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn(self.purchase1, Purchase.objects.all())
+
+    def test_admin_approve_refund_send_money_back(self):
+        user_pk = self.user1.pk
+        wallet_before = ShopUser.objects.get(pk=user_pk).wallet
+        amount_to_refund = self.refund1.purchase.price * self.refund1.purchase.quantity
+        wallet_after = wallet_before + amount_to_refund
+        self.c.post('/admin-refund-process/', data={'pk': self.refund1.pk, 'approval': 'approve'})
+        self.assertEqual(wallet_after, ShopUser.objects.get(pk=user_pk).wallet)
+
+    def test_admin_approve_refund_return_goods_in_stock(self):
+        good_pk = self.good.pk
+        in_stock_before = Good.objects.get(pk=good_pk).in_stock
+        in_stock_after = in_stock_before + self.refund1.purchase.quantity
+        self.c.post('/admin-refund-process/', data={'pk': self.refund1.pk, 'approval': 'approve'})
+        self.assertEqual(in_stock_after, Good.objects.get(pk=good_pk).in_stock)
+
+
+class RegisterViewTest(TestCase):
+    def setUp(self):
+        self.form_data = {'email': 'user_new@gmail.com',
+                          'password1': 'j3hgGgd12n',
+                          'password2': 'j3hgGgd12n'}
+        self.c = Client()
+
+    def test_register_redirect(self):
+        form = CustomUserCreationForm(data=self.form_data)
+        form.is_valid()
+        response = self.c.post('/register/', form.cleaned_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, '/')
+
+    def test_register_user_created(self):
+        form = CustomUserCreationForm(data=self.form_data)
+        form.is_valid()
+        response = self.c.post('/register/', form.cleaned_data)
+        self.assertTrue(ShopUser.objects.filter(email='user_new@gmail.com').exists())
 

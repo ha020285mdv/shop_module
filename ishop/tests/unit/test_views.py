@@ -1,55 +1,58 @@
 import datetime
+from datetime import timedelta
 from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponseRedirect
-from django.test import RequestFactory, TestCase, Client
-from ishop.models import ShopUser, Good, Purchase, Refund
-from ishop.views import GoodsListView, PurchaseView, PurchaseRefundView, Account, Login, AdminRefundProcessView
+from django.test import TestCase, RequestFactory
+from django.utils import timezone
 
-
-class PurchaseViewTest(TestCase):
-    def setUp(self):
-        self.factory = RequestFactory()
-
-    def test_method_get(self):
-        request = self.factory.get('/purchase/')
-        response = PurchaseView.as_view()(request)
-        self.assertNotEqual(response.status_code, 200)
+from ishop.models import Purchase, Refund, ShopUser, Good
+from ishop.tests.factories import ShopUserFactory, GoodFactory, PurchaseFactory, RefundFactory
+from ishop.views import PurchaseView, Account, AdminRefundProcessView, Login
 
 
 class AccountViewTest(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        self.user1 = ShopUser.objects.create(email='user1@gmail.com',
-                                             username='user1@gmail.com',
-                                             password='top_secret01',
-                                             wallet=1000)
-        self.user2 = ShopUser.objects.create(email='user2@gmail.com',
-                                             username='user2@gmail.com',
-                                             password='top_secret01',
-                                             wallet=1000)
 
-        beer = Good.objects.create(title="Beer", price=10, in_stock=10)
-        wine = Good.objects.create(title="Wine", price=15, in_stock=20)
-        vodka = Good.objects.create(title="Vodka", price=19, in_stock=12)
-        rum = Good.objects.create(title="Rum", price=21, in_stock=14)
-        cidre = Good.objects.create(title="Cidre", price=5, in_stock=23)
+        self.user1 = ShopUserFactory(email="test1@gmail.com")
+        self.user1.save()
+        self.user2 = ShopUserFactory(email="test2@gmail.com")
+        self.user2.save()
 
-        purchase1 = Purchase.objects.create(customer=self.user1, good=beer, quantity=3, price=10)
-        purchase2 = Purchase.objects.create(customer=self.user1, good=wine, quantity=1, price=15)
-        purchase3 = Purchase.objects.create(customer=self.user2, good=rum, quantity=2, price=21)
-        purchase4 = Purchase.objects.create(customer=self.user2, good=cidre, quantity=3, price=5)
-        purchase5 = Purchase.objects.create(customer=self.user2, good=vodka, quantity=1, price=19)
+        good1 = GoodFactory()
+        good1.save()
 
-        Refund.objects.create(purchase=purchase4)
-        Refund.objects.create(purchase=purchase5)
+        self.purchase1 = PurchaseFactory(customer=self.user1, good=good1)
+        self.purchase1.save()
+        self.purchase2 = PurchaseFactory(customer=self.user1, good=good1)
+        self.purchase2.save()
+        self.purchase3 = PurchaseFactory(customer=self.user1, good=good1)
+        self.purchase3.save()
+        self.purchase4 = PurchaseFactory(customer=self.user2, good=good1)
+        self.purchase4.save()
 
-    def test_availability(self):
+        self.refund1 = RefundFactory(purchase=self.purchase1)
+        self.refund1.save()
+        self.refund2 = RefundFactory(purchase=self.purchase2)
+        self.refund2.save()
+        self.refund3 = RefundFactory(purchase=self.purchase3)
+        self.refund3.save()
+        self.refund4 = RefundFactory(purchase=self.purchase4)
+        self.refund4.save()
+
+    def test_availability_for_authorized(self):
         request = self.factory.get('/account')
         request.user = self.user1
         response = Account.as_view()(request)
         self.assertEqual(response.status_code, 200)
+
+    def test_decline_for_unauthorized(self):
+        request = self.factory.get('/account')
+        request.user = AnonymousUser()
+        response = Account.as_view()(request)
+        self.assertEqual(response.status_code, 302)
 
     def test_get_queryset(self):
         request = self.factory.get('/account')
@@ -65,6 +68,18 @@ class AccountViewTest(TestCase):
         response = Account.as_view()(request)
         context = response.context_data
         self.assertIn('refund_possible', context)
+
+    def test_get_context_data_refund_possible(self):
+        request = self.factory.get('/account')
+        request.user = self.user1
+        mocked_dt = timezone.now() - timedelta(hours=1)
+        with mock.patch('django.utils.timezone.now', mock.Mock(return_value=mocked_dt)):
+            self.purchase3.datetime = timezone.now()
+            self.purchase3.save()
+        response = Account.as_view()(request)
+        context = response.context_data
+        qs = Purchase.objects.filter(customer=self.user1).exclude(id=self.purchase3.id)
+        self.assertQuerysetEqual(context['refund_possible'], qs)
 
     def test_get_context_data_has_in_refund(self):
         request = self.factory.get('/account')
@@ -93,7 +108,7 @@ class AccountViewTest(TestCase):
         request.user = self.user1
         response = Account.as_view()(request)
         context = response.context_data
-        self.assertEqual(self.user1.wallet, context['balance'])
+        self.assertEqual(context['balance'], self.user1.wallet)
 
 
 class AdminRefundProcessViewTest(TestCase):
@@ -130,3 +145,4 @@ class LoginViewTest(TestCase):
         view.setup(request)
         success_url = view.get_success_url()
         self.assertEqual(success_url, '/')
+
