@@ -4,7 +4,6 @@ from django.test import TestCase, Client
 
 from ishop.forms import CustomUserCreationForm
 from ishop.models import ShopUser, Good, Purchase, Refund
-from ishop.tests.factories import ShopUserFactory, GoodFactory, PurchaseFactory, RefundFactory, SuperUserFactory
 
 
 class PurchaseViewTest(TestCase):
@@ -159,3 +158,10 @@ class RegisterViewTest(TestCase):
         response = self.c.post('/register/', form.cleaned_data)
         self.assertTrue(ShopUser.objects.filter(email='user_new@gmail.com').exists())
 
+    def test_register_user_logged(self):
+        form = CustomUserCreationForm(data=self.form_data)
+        form.is_valid()
+        response = self.c.post('/register/', form.cleaned_data)
+        from django.contrib import auth
+        user = auth.get_user(self.c)
+        assert user.is_authenticated

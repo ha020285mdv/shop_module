@@ -6,11 +6,16 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     Custom permission to only allow admins to edit.
     Retrieve - all users
     """
+
     def has_object_permission(self, request, view, obj):
-        return request.user.is_superuser or request.method in permissions.SAFE_METHODS
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user.is_superuser
 
     def has_permission(self, request, view):
-        return request.user.is_superuser if request.method == 'POST' else True
+        if request.method == 'POST':
+            return request.user.is_superuser
+        return True
 
 
 class IsAdminOrCreateOnly(IsAdminOrReadOnly):
@@ -20,7 +25,11 @@ class IsAdminOrCreateOnly(IsAdminOrReadOnly):
     Make sure you use filter_backends to allow users retrieve only their own objects
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated if request.method == 'POST' else True
+        if request.method == 'GET':
+            return request.user.is_authenticated
+        if request.method == 'POST':
+            return request.user.is_authenticated
+        return request.user.is_superuser
 
 
 class IsAdminOrCreateOnlyForUsers(IsAdminOrCreateOnly):
@@ -30,4 +39,4 @@ class IsAdminOrCreateOnlyForUsers(IsAdminOrCreateOnly):
     Make sure you use filter_backends to allow users retrieve only their own objects
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated or request.method == 'POST'
+        return request.user.is_superuser or request.method in permissions.SAFE_METHODS
