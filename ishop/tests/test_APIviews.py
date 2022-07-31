@@ -3,7 +3,7 @@ import json
 from django.test import TestCase
 from ishop.models import ShopUser, Good, Purchase, Refund
 from ishop.tests.factories import ShopUserFactory, SuperUserFactory, GoodFactory, PurchaseFactory, RefundFactory
-from rest_framework.test import APIRequestFactory, force_authenticate, APIClient
+from rest_framework.test import APIClient
 
 
 class PurchaseViewSetTest(TestCase):

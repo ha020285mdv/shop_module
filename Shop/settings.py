@@ -146,6 +146,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 INTERVAL_TO_REFUND = 3  # in minutes
 
+QUANTITY_SIGNALS_AUTO_ADD_GOODS_IN_STOCK_WHEN_GET_RID = 12
+
 DRF_TOKEN_LIFE_TIME = 1 * 60 * 60 * 10000  # in seconds
 
 CACHES = {
