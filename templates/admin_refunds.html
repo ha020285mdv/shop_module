@@ -23,4 +23,13 @@
 
     {% include 'pagination.html' %}
 
+    {% if page_obj %}
+        <form method="post" action="{% url 'adminrefund_process' %}">
+            {% csrf_token %}
+            <input type="submit" value="APPROVE all" name="approve-all">
+            <input type="submit" value="DECLINE all" name="decline-all">
+        </form>
+    {% endif %}
+
+
 {% endblock %}

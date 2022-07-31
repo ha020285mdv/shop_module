@@ -28,4 +28,4 @@ class IsOwnerOrAdminFilterBackendForUser(filters.BaseFilterBackend):
         admin - all
     """
     def filter_queryset(self, request, queryset, view):
-        return queryset.all() if request.user.is_superuser else queryset.filter(pk=request.user.pk)  #костыль (не знаю как из инстанса получить кверисет)
+        return queryset.all() if request.user.is_superuser else queryset.filter(pk=request.user.pk)
