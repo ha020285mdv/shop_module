@@ -25,11 +25,6 @@ class PurchaseViewSetTest(TestCase):
         response = self.client.get('/api/purchases/')
         self.assertEqual(response.status_code, 401)
 
-    # def test_get_purchase_not_admin_auth(self):
-    #     self.client.force_authenticate(user=self.user)
-    #     response = self.client.get('/api/purchases/')
-    #     self.assertEqual(response.status_code, 403)
-
     def test_create_purchase_auth_user_empty_data(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.post('/api/purchases/', data={}, format='json')
