@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'ishop',
     'rest_framework',
     'rest_framework.authtoken',
+    'coverage',
 ]
 
 MIDDLEWARE = [
@@ -82,6 +83,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'shop',
+        'TEST': {
+            'NAME': 'testdatabase',
+        },
         'USER': 'shopuser',
         'PASSWORD': 'mypass',
         'HOST': 'localhost',
@@ -118,7 +122,7 @@ TIME_ZONE = 'Europe/Kiev'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -141,6 +145,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 INTERVAL_TO_REFUND = 3  # in minutes
+
+QUANTITY_SIGNALS_AUTO_ADD_GOODS_IN_STOCK_WHEN_GET_RID = 12
 
 DRF_TOKEN_LIFE_TIME = 1 * 60 * 60 * 10000  # in seconds
 
@@ -166,3 +172,10 @@ REST_FRAMEWORK = {
     ]
 
 }
+
+# CELERY STUFF
+BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

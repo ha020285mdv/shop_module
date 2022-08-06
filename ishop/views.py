@@ -11,6 +11,8 @@ from django.db import transaction
 from Shop import settings
 from ishop.forms import CustomUserCreationForm
 from ishop.models import Good, ShopUser, Purchase, Refund
+from ishop.tasks import delete_all_refunds
+from ishop.tasks import approve_all_refunds
 
 
 class SuperUserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -19,7 +21,7 @@ class SuperUserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 
 
 class GoodsListView(ListView):
-    paginate_by = 10
+    paginate_by = 20
     http_method_names = ['post', 'get']
     template_name = 'goods_list.html'
     queryset = Good.objects.filter(in_stock__gt=0)
@@ -123,6 +125,20 @@ class AdminRefundProcessView(SuperUserRequiredMixin, View):
     model = Refund
 
     def post(self, request, *args, **kwargs):
+        if request.POST.get('decline-all'):
+            done = delete_all_refunds.delay()
+            done.get()
+            msg = 'All refunds have been declined'
+            messages.success(self.request, msg)
+            return redirect('adminrefund')
+
+        if request.POST.get('approve-all'):
+            done = approve_all_refunds.delay()
+            done.get()
+            msg = 'All refunds have been approved'
+            messages.success(self.request, msg)
+            return redirect('adminrefund')
+
         pk = self.request.POST['pk']
         approval = self.request.POST['approval']
 
